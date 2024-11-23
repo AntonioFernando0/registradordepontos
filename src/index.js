@@ -1,7 +1,12 @@
+// Importações necessárias
 const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
-const bcrypt = require('bcrypt');
+const bcrypt = require('bcryptjs');
+const cors = require('cors');
+
+// Inicialização do Express
+const app = express();
 
 // Configuração do MySQL
 const db = mysql.createPool({
@@ -11,17 +16,21 @@ const db = mysql.createPool({
     database: 'ponto_eletronico',
 });
 
-const app = express();
-app.use(bodyParser.json());
+// Middlewares
+app.use(cors()); // Permite requisições de outras origens
+app.use(bodyParser.json()); // Interpreta JSON no corpo da requisição
 
 // Verifica a conexão com o banco de dados
 db.getConnection()
     .then(() => console.log('Conexão com o banco de dados bem-sucedida!'))
-    .catch(err => console.error('Erro ao conectar ao banco de dados:', err));
+    .catch(err => {
+        console.error('Erro ao conectar ao banco de dados:', err);
+        process.exit(1); // Encerra o servidor se não conseguir conectar
+    });
 
 // Rota inicial de teste
 app.get('/', (req, res) => {
-    res.send('Servidor funcionando!')
+    res.send('Servidor funcionando!');
 });
 
 // Rota para verificar a conexão com o banco de dados
@@ -30,14 +39,15 @@ app.get('/bancodedados', async (req, res) => {
         await db.query('SELECT 1'); // Executa uma consulta simples
         res.send('Conexão com o banco de dados funcionando!');
     } catch (err) {
-        res.status(500).send('Erro ao conectar ao banco de dados');
+        console.error('Erro ao verificar o banco de dados:', err);
+        res.status(500).send('Erro ao conectar ao banco de dados.');
     }
 });
 
 // Rota para listar todos os funcionários
 app.get('/funcionarios', async (req, res) => {
     try {
-        const [rows] = await db.query('SELECT id, nome, cpf FROM funcionarios'); // Não retornamos a senha por segurança
+        const [rows] = await db.query('SELECT id, nome, cpf FROM funcionarios');
         res.json(rows);
     } catch (err) {
         console.error('Erro ao listar funcionários:', err);
@@ -93,13 +103,11 @@ app.delete('/funcionarios/:id', async (req, res) => {
 app.post('/ponto', async (req, res) => {
     const { funcionario_id, tipo } = req.body;
 
-    // Validação básica
     if (!funcionario_id || !['entrada', 'saida'].includes(tipo)) {
         return res.status(400).json({ error: 'Funcionário e tipo (entrada ou saída) são obrigatórios.' });
     }
 
     try {
-        // Insere o ponto no banco de dados
         await db.query(
             'INSERT INTO pontos (funcionario_id, tipo) VALUES (?, ?)',
             [funcionario_id, tipo]
@@ -114,10 +122,13 @@ app.post('/ponto', async (req, res) => {
 
 // Rota para consultar registros de ponto
 app.get('/ponto', async (req, res) => {
-    const { funcionario_id } = req.query; // Opcional: Filtrar por ID do funcionário
+    const { funcionario_id } = req.query;
 
     try {
-        let query = 'SELECT p.id, f.nome, p.data_hora, p.tipo FROM pontos p JOIN funcionarios f ON p.funcionario_id = f.id';
+        let query = `
+            SELECT p.id, f.nome, p.data_hora, p.tipo 
+            FROM pontos p 
+            JOIN funcionarios f ON p.funcionario_id = f.id`;
         const params = [];
 
         if (funcionario_id) {
@@ -134,7 +145,7 @@ app.get('/ponto', async (req, res) => {
     }
 });
 
-// Rota para cadastro de funcionários (incluindo criptografia de senha)
+// Rota para cadastro de funcionários
 app.post('/cadastro', async (req, res) => {
     const { nome, cpf, senha } = req.body;
 
@@ -143,7 +154,7 @@ app.post('/cadastro', async (req, res) => {
     }
 
     try {
-        const senhaHash = await bcrypt.hash(senha, 10); // Criptografa a senha
+        const senhaHash = await bcrypt.hash(senha, 10);
 
         await db.query(
             'INSERT INTO funcionarios (nome, cpf, senha) VALUES (?, ?, ?)',
@@ -157,8 +168,9 @@ app.post('/cadastro', async (req, res) => {
     }
 });
 
-// Iniciar o servidor na porta 8080
+// Inicializa o servidor
 const PORT = 8080;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
+
