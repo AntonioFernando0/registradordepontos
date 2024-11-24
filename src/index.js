@@ -3,7 +3,7 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
-const cors = require('cors');
+const cors = require('cors'); // Importando o CORS
 
 // Inicialização do Express
 const app = express();
@@ -17,7 +17,9 @@ const db = mysql.createPool({
 });
 
 // Middlewares
-app.use(cors()); // Permite requisições de outras origens
+app.use(cors({
+    origin: '*', // Permite qualquer origem (ajuste para produção)
+}));
 app.use(bodyParser.json()); // Interpreta JSON no corpo da requisição
 
 // Verifica a conexão com o banco de dados
@@ -137,7 +139,6 @@ app.get('/ponto', async (req, res) => {
         }
 
         const [rows] = await db.query(query, params);
-
         res.json(rows);
     } catch (err) {
         console.error('Erro ao consultar registros de ponto:', err);
@@ -146,16 +147,47 @@ app.get('/ponto', async (req, res) => {
 });
 
 // Rota para cadastro de funcionários
-app.post('/cadastro', async (req, res) => {
+app.get('/vamos', async (req, res) => {
     const { nome, cpf, senha } = req.body;
 
+    // Verificação de campos obrigatórios
     if (!nome || !cpf || !senha) {
         return res.status(400).json({ error: 'Todos os campos são obrigatórios.' });
     }
 
+    // Validação do CPF
+    const validarCPF = (cpf) => {
+        cpf = cpf.replace(/\D/g, ''); // Remove caracteres não numéricos
+        if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+        let soma = 0, resto;
+        for (let i = 1; i <= 9; i++) soma += parseInt(cpf[i - 1]) * (11 - i);
+        resto = (soma * 10) % 11;
+        if (resto === 10 || resto === 11) resto = 0;
+        if (resto !== parseInt(cpf[9])) return false;
+        soma = 0;
+        for (let i = 1; i <= 10; i++) soma += parseInt(cpf[i - 1]) * (12 - i);
+        resto = (soma * 10) % 11;
+        if (resto === 10 || resto === 11) resto = 0;
+        return resto === parseInt(cpf[10]);
+    };
+
+    if (!validarCPF(cpf)) {
+        return res.status(400).json({ error: 'CPF inválido.' });
+    }
+
+    // Validação de senha
+    const senhaForte = /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/;
+    if (!senhaForte.test(senha)) {
+        return res.status(400).json({
+            error: 'A senha deve conter pelo menos 8 caracteres, incluindo uma letra maiúscula, um número e um caractere especial.',
+        });
+    }
+
     try {
+        // Hash da senha
         const senhaHash = await bcrypt.hash(senha, 10);
 
+        // Inserção no banco
         await db.query(
             'INSERT INTO funcionarios (nome, cpf, senha) VALUES (?, ?, ?)',
             [nome, cpf, senhaHash]
@@ -168,9 +200,87 @@ app.post('/cadastro', async (req, res) => {
     }
 });
 
+const jwt = require('jsonwebtoken');
+const SECRET_KEY = 'sua-chave-secreta-super-segura'; // Use uma variável de ambiente para maior segurança
+
+// Rota de login
+app.post('/login', async (req, res) => {
+    const { cpf, senha } = req.body;
+
+    if (!cpf || !senha) {
+        return res.status(400).json({ error: 'CPF e senha são obrigatórios.' });
+    }
+
+    try {
+        // Verifica se o usuário existe
+        const [rows] = await db.query('SELECT * FROM funcionarios WHERE cpf = ?', [cpf]);
+
+        if (rows.length === 0) {
+            return res.status(401).json({ error: 'CPF ou senha inválidos.' });
+        }
+
+        const usuario = rows[0];
+
+        // Verifica a senha
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
+        if (!senhaValida) {
+            return res.status(401).json({ error: 'CPF ou senha inválidos.' });
+        }
+
+        // Gera o token JWT
+        const token = jwt.sign(
+            { id: usuario.id, nome: usuario.nome, cpf: usuario.cpf },
+            SECRET_KEY,
+            { expiresIn: '1h' } // Token válido por 1 hora
+        );
+
+        res.json({ token });
+    } catch (err) {
+        console.error('Erro ao fazer login:', err);
+        res.status(500).json({ error: 'Erro no servidor.' });
+    }
+});
+// Middleware para verificar o token JWT
+function autenticarToken(req, res, next) {
+    const authHeader = req.headers['authorization'];
+    const token = authHeader && authHeader.split(' ')[1];
+
+    if (!token) {
+        return res.status(401).json({ error: 'Token não fornecido.' });
+    }
+
+    jwt.verify(token, SECRET_KEY, (err, usuario) => {
+        if (err) {
+            return res.status(403).json({ error: 'Token inválido.' });
+        }
+
+        req.usuario = usuario; // Salva os dados do usuário no request
+        next();
+    });
+}
+// Exemplo de rota protegida
+app.get('/dados-protegidos', autenticarToken, (req, res) => {
+    res.json({ message: `Bem-vindo, ${req.usuario.nome}! Seus dados estão protegidos.` });
+});
+// Rota para gerar relatório de pontos
+app.get('/relatorio', autenticarToken, async (req, res) => {
+    try {
+        const [registros] = await db.query(`
+            SELECT p.id, f.nome, p.data_hora, p.tipo 
+            FROM pontos p 
+            JOIN funcionarios f ON p.funcionario_id = f.id
+        `);
+
+        // Retornar os registros em formato JSON
+        res.json(registros);
+    } catch (err) {
+        console.error('Erro ao gerar relatório:', err);
+        res.status(500).json({ error: 'Erro ao gerar relatório.' });
+    }
+});
+
 // Inicializa o servidor
 const PORT = 8080;
 app.listen(PORT, () => {
     console.log(`Servidor rodando na porta ${PORT}`);
 });
-
