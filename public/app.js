@@ -1,4 +1,4 @@
-const API_URL = 'http://localhost:8080/vamos';
+const API_URL = 'http://localhost:8080/';
 
 // Função para carregar registros
 async function carregarRegistros() {
@@ -12,6 +12,7 @@ async function carregarRegistros() {
         if (response.ok) {
             const dados = await response.json();
             console.log(dados);
+            // Aqui você pode atualizar a tabela com os dados recebidos
         } else {
             alert('Acesso negado. Faça login novamente.');
             logout(); // Logout se o acesso for negado
@@ -100,6 +101,7 @@ function logout() {
     document.getElementById('login-section').style.display = 'block';
     document.getElementById('protected-data-section').style.display = 'none';
     document.getElementById('ponto-section').style.display = 'none';
+    document.getElementById('cadastro-funcionario').style.display = 'none'; // Oculta seção de cadastro
     document.getElementById('btn-logout').style.display = 'none';
 }
 
@@ -152,6 +154,39 @@ function downloadCSV(csv, filename) {
     link.click();
     document.body.removeChild(link);
 }
+
+// Função para cadastrar funcionário
+document.getElementById('form-cadastro-funcionario').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const nome = document.getElementById('nome').value;
+    const cpf = document.getElementById('cpf-novo').value;
+    const senha = document.getElementById('senha-nova').value;
+    const cargo = document.getElementById('cargo').value;
+    const token = localStorage.getItem('token');
+
+    try {
+        const response = await fetch(`${API_URL}/funcionarios`, {
+            method: 'POST',
+            headers: { 
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${token}`
+            },
+            body: JSON.stringify({ nome, cpf, senha, cargo })
+        });
+
+        if (response.ok) {
+            alert('Funcionário cadastrado com sucesso!');
+            document.getElementById('form-cadastro-funcionario').reset(); // Limpa o formulário
+        } else {
+            const error = await response.json();
+            alert(error.error || 'Erro ao cadastrar funcionário.');
+        }
+    } catch (err) {
+        console.error('Erro ao cadastrar funcionário:', err);
+        alert('Erro ao conectar com o servidor.');
+    }
+});
 
 // Carrega os registros ao inicializar a página
 carregarRegistros();

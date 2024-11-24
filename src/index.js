@@ -1,9 +1,11 @@
+
 // Importações necessárias
 const express = require('express');
 const bodyParser = require('body-parser');
 const mysql = require('mysql2/promise');
 const bcrypt = require('bcryptjs');
 const cors = require('cors'); // Importando o CORS
+const jwt = require('jsonwebtoken'); // Importando JWT
 
 // Inicialização do Express
 const app = express();
@@ -103,16 +105,16 @@ app.delete('/funcionarios/:id', async (req, res) => {
 
 // Rota para registrar o ponto
 app.post('/ponto', async (req, res) => {
-    const { funcionario_id, tipo } = req.body;
+    const { funcionario_id, tipo, data_hora } = req.body;
 
-    if (!funcionario_id || !['entrada', 'saida'].includes(tipo)) {
-        return res.status(400).json({ error: 'Funcionário e tipo (entrada ou saída) são obrigatórios.' });
+    if (!funcionario_id || !['entrada', 'saida'].includes(tipo) || !data_hora) {
+        return res.status(400).json({ error: 'Funcionário, tipo (entrada ou saída) e data/hora são obrigatórios.' });
     }
 
     try {
         await db.query(
-            'INSERT INTO pontos (funcionario_id, tipo) VALUES (?, ?)',
-            [funcionario_id, tipo]
+            'INSERT INTO pontos (funcionario_id, tipo, data_hora) VALUES (?, ?, ?)',
+            [funcionario_id, tipo, data_hora] // Incluindo data_hora na inserção
         );
 
         res.status(201).json({ message: 'Ponto registrado com sucesso!' });
@@ -147,7 +149,7 @@ app.get('/ponto', async (req, res) => {
 });
 
 // Rota para cadastro de funcionários
-app.get('/vamos', async (req, res) => {
+app.post('/funcionarios', async (req, res) => {
     const { nome, cpf, senha } = req.body;
 
     // Verificação de campos obrigatórios
@@ -200,7 +202,7 @@ app.get('/vamos', async (req, res) => {
     }
 });
 
-const jwt = require('jsonwebtoken');
+// Chave secreta para JWT
 const SECRET_KEY = 'sua-chave-secreta-super-segura'; // Use uma variável de ambiente para maior segurança
 
 // Rota de login
@@ -240,6 +242,7 @@ app.post('/login', async (req, res) => {
         res.status(500).json({ error: 'Erro no servidor.' });
     }
 });
+
 // Middleware para verificar o token JWT
 function autenticarToken(req, res, next) {
     const authHeader = req.headers['authorization'];
@@ -258,10 +261,12 @@ function autenticarToken(req, res, next) {
         next();
     });
 }
+
 // Exemplo de rota protegida
 app.get('/dados-protegidos', autenticarToken, (req, res) => {
     res.json({ message: `Bem-vindo, ${req.usuario.nome}! Seus dados estão protegidos.` });
 });
+
 // Rota para gerar relatório de pontos
 app.get('/relatorio', autenticarToken, async (req, res) => {
     try {

@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cadastrar Funcionário</title>
+    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+        }
+        .container {
+            margin-top: 30px;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="text-center">Cadastrar Funcionário</h1>
+        <form id="form-cadastro-funcionario">
+            <div class="form-group">
+                <label for="nome">Nome</label>
+                <input type="text" id="nome" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="cpf-novo">CPF</label>
+                <input type="text" id="cpf-novo" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="senha-nova">Senha</label>
+                <input type="password" id="senha-nova" class="form-control" required>
+            </div>
+            <div class="form-group">
+                <label for="cargo">Cargo</label>
+                <input type="text" id="cargo" class="form-control" required>
+            </div>
+            <button type="submit" class="btn btn-primary btn-block">Cadastrar Funcionário</button>
+        </form>
+        <p class="text-center mt-3">Já tem uma conta? <a href="login.html">Login</a></p>
+    </div>
+
+    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
+    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
+    <script>
+        document.getElementById('form-cadastro-funcionario').addEventListener('submit', async function(event) {
+            event.preventDefault();
+            const nome = document.getElementById('nome').value;
+            const cpf = document.getElementById('cpf-novo').value;
+            const senha = document.getElementById('senha-nova').value;
+            const cargo = document.getElementById('cargo').value;
+
+            const response = await fetch('http://localhost:8080/funcionarios', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ nome, cpf, senha, cargo })
+            });
+
+            if (response.ok) {
+                alert('Funcionário cadastrado com sucesso!');
+                window.location.href = 'login.html';
+            } else {
+                const error = await response.json();
+                alert(error.error);
+            }
+        });
+    </script>
+</body>
+</html>
