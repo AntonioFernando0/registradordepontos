@@ -266,17 +266,43 @@ app.get('/dados-protegidos', autenticarToken, (req, res) => {
     res.json({ message: `Bem-vindo, ${req.usuario.nome}! Seus dados estão protegidos.` });
 });
 
-// Rota para gerar relatório de pontos
+// Rota para gerar relatório de pontos com filtros de data
 app.get('/relatorio', autenticarToken, async (req, res) => {
-    try {
-        const [registros] = await db.query(`
-            SELECT p.id, f.nome, p.data_hora, p.tipo 
-            FROM pontos p 
-            JOIN funcionarios f ON p.funcionario_id = f.id
-        `);
+    const { funcionario_id, dia, mes, ano } = req.query;
+    let query = `
+        SELECT p.id, f.nome, p.tipo, p.data_hora
+        FROM pontos p
+        JOIN funcionarios f ON p.funcionario_id = f.id
+        WHERE 1=1`;
+    const params = [];
 
-        // Retornar os registros em formato JSON
-        res.json(registros);
+    // Filtrar por funcionário, se fornecido
+    if (funcionario_id) {
+        query += ' AND p.funcionario_id = ?';
+        params.push(funcionario_id);
+    }
+
+    // Filtrar por ano, se fornecido
+    if (ano) {
+        query += ' AND YEAR(p.data_hora) = ?';
+        params.push(ano);
+    }
+
+    // Filtrar por mês, se fornecido
+    if (mes) {
+        query += ' AND MONTH(p.data_hora) = ?';
+        params.push(mes);
+    }
+
+    // Filtrar por dia, se fornecido
+    if (dia) {
+        query += ' AND DAY(p.data_hora) = ?';
+        params.push(dia);
+    }
+
+    try {
+        const [rows] = await db.query(query, params);
+        res.json(rows);
     } catch (err) {
         console.error('Erro ao gerar relatório:', err);
         res.status(500).json({ error: 'Erro ao gerar relatório.' });
