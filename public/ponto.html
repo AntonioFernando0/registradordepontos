@@ -12,6 +12,13 @@
         .container {
             margin-top: 30px;
         }
+        .form-text {
+            font-size: 0.9rem;
+            color: #6c757d;
+        }
+        .btn-report {
+            margin-top: 10px;
+        }
     </style>
 </head>
 <body>
@@ -37,14 +44,25 @@
             <div class="form-group">
                 <label for="data_hora">Data e Hora</label>
                 <input type="datetime-local" id="data_hora" class="form-control" required>
+                <small class="form-text">
+                    Certifique-se de registrar a data e hora dentro do intervalo correto. Não é permitido horários muito antigos ou futuros.
+                </small>
             </div>
             <button type="submit" class="btn btn-primary btn-block">Registrar Ponto</button>
         </form>
+        <a href="/public/relatorio.html" class="btn btn-secondary btn-block btn-report">Ir para Relatórios</a>
     </div>
 
     <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
     <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dataHoraInput = document.getElementById('data_hora');
+            const agora = new Date();
+            const formatoISO = agora.toISOString().slice(0, 16); // Formata para 'yyyy-MM-ddTHH:mm'
+            dataHoraInput.value = formatoISO;
+        });
+
         document.getElementById('form-ponto').addEventListener('submit', async function(event) {
             event.preventDefault();
             const funcionario_id = document.getElementById('funcionario_id').value;
@@ -53,6 +71,22 @@
             const data_hora = document.getElementById('data_hora').value;
             const token = localStorage.getItem('token');
 
+            // Validações de data e hora
+            const agora = new Date();
+            const dataHoraSelecionada = new Date(data_hora);
+            const limiteAtraso = new Date(agora.getTime() - 15 * 60 * 1000); // 15 minutos antes
+
+            if (dataHoraSelecionada > agora) {
+                alert('Erro: Não é permitido registrar horários futuros.');
+                return;
+            }
+
+            if (dataHoraSelecionada < limiteAtraso) {
+                alert('Erro: O horário registrado está muito atrasado. Limite de 15 minutos.');
+                return;
+            }
+
+            // Enviar dados para o backend
             const response = await fetch('http://localhost:8080/ponto', {
                 method: 'POST',
                 headers: {
@@ -66,9 +100,12 @@
                 alert('Ponto registrado com sucesso!');
             } else {
                 const error = await response.json();
-                alert(error.error);
+                alert(error.error || 'Erro ao registrar ponto.');
             }
         });
     </script>
 </body>
 </html>
+
+
+

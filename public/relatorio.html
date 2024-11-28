@@ -15,92 +15,121 @@
     </style>
 </head>
 <body>
-
     <div class="container">
-        <h1 class="text-center">Gerar Relatório de Pontos</h1>
-        <form id="relatorioForm">
-            <div class="form-group">
-                <label for="funcionario_id">ID do Funcionário (opcional)</label>
-                <input type="number" id="funcionario_id" class="form-control">
-            </div>
-            <div class="form-group">
-                <label for="dia">Dia (1-31)</label>
-                <input type="number" id="dia" class="form-control" min="1" max="31">
-            </div>
-            <div class="form-group">
-                <label for="mes">Mês (1-12)</label>
-                <input type="number" id="mes" class="form-control" min="1" max="12">
-            </div>
-            <div class="form-group">
-                <label for="ano">Ano (ex: 2024)</label>
-                <input type="number" id="ano" class="form-control">
-            </div>
-            <button type="submit" class="btn btn-primary btn-block">Gerar Relatório</button>
-        </form>
-
-        <div id="relatorioResultado" class="mt-4"></div>
+        <h1 class="text-center">Relatório de Pontos</h1>
+        <div class="form-group">
+            <label for="filtro">Filtrar por Nome ou ID do Funcionário:</label>
+            <input type="text" id="filtro" class="form-control" placeholder="Digite o Nome ou ID">
+        </div>
+        <div class="form-group">
+            <label for="mes">Filtrar por Mês:</label>
+            <select id="mes" class="form-control">
+                <option value="">Todos os Meses</option>
+                <option value="0">Janeiro</option>
+                <option value="1">Fevereiro</option>
+                <option value="2">Março</option>
+                <option value="3">Abril</option>
+                <option value="4">Maio</option>
+                <option value="5">Junho</option>
+                <option value="6">Julho</option>
+                <option value="7">Agosto</option>
+                <option value="8">Setembro</option>
+                <option value="9">Outubro</option>
+                <option value="10">Novembro</option>
+                <option value="11">Dezembro</option>
+            </select>
+        </div>
+        <table class="table table-striped">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>ID do Funcionário</th>
+                    <th>Nome</th>
+                    <th>Tipo</th>
+                    <th>Data e Hora</th>
+                </tr>
+            </thead>
+            <tbody id="tabela-relatorio">
+                <!-- Dados serão carregados aqui -->
+            </tbody>
+        </table>
+        <a href="/registrar-ponto.html" class="btn btn-secondary">Voltar ao Registro de Ponto</a>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
-        document.getElementById('relatorioForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+        document.addEventListener('DOMContentLoaded', async () => {
+            const tabelaRelatorio = document.getElementById('tabela-relatorio');
+            const filtroInput = document.getElementById('filtro');
+            const mesSelect = document.getElementById('mes');
+            let registros = [];
 
-            const funcionario_id = document.getElementById('funcionario_id').value;
-            const dia = document.getElementById('dia').value;
-            const mes = document.getElementById('mes').value;
-            const ano = document.getElementById('ano').value;
-
-            const params = new URLSearchParams();
-            if (funcionario_id) params.append('funcionario_id', funcionario_id);
-            if (dia) params.append('dia', dia);
-            if (mes) params.append('mes', mes);
-            if (ano) params.append('ano', ano);
-
+            // Carregar os dados do relatório
             try {
-                const response = await fetch(`http://localhost:8080/relatorio?${params.toString()}`);
-                const resultado = await response.json();
+                const response = await fetch('http://localhost:8080/relatorio');
+                registros = await response.json();
 
-                const relatorioDiv = document.getElementById('relatorioResultado');
-                relatorioDiv.innerHTML = '';
-
-                if (resultado.length === 0) {
-                    relatorioDiv.innerHTML = '<p>Nenhum registro encontrado.</p>';
-                } else {
-                    const table = document.createElement('table');
-                    table.classList.add('table', 'table-striped');
-                    table.innerHTML = `
-                        <thead>
+                // Função para renderizar a tabela
+                const renderTabela = (dados) => {
+                    tabelaRelatorio.innerHTML = ''; // Limpa a tabela
+                    if (dados.length === 0) {
+                        tabelaRelatorio.innerHTML = `
                             <tr>
-                                <th>ID</th>
-                                <th>Nome</th>
-                                <th>Tipo</th>
-                                <th>Data/Hora</th>
+                                <td colspan="5" class="text-center text-warning">Nenhum registro encontrado</td>
                             </tr>
-                        </thead>
-                        <tbody>
-                    `;
-                    
-                    resultado.forEach(registro => {
-                        const row = document.createElement('tr');
-                        row.innerHTML = `
+                        `;
+                        return;
+                    }
+
+                    dados.forEach(registro => {
+                        const linha = document.createElement('tr');
+                        linha.innerHTML = `
                             <td>${registro.id}</td>
+                            <td>${registro.funcionario_id}</td>
                             <td>${registro.nome}</td>
                             <td>${registro.tipo}</td>
                             <td>${new Date(registro.data_hora).toLocaleString()}</td>
                         `;
-                        table.appendChild(row);
+                        tabelaRelatorio.appendChild(linha);
                     });
+                };
 
-                    table.innerHTML += '</tbody>';
-                    relatorioDiv.appendChild(table);
-                }
+                // Renderizar a tabela inicialmente com todos os registros
+                renderTabela(registros);
+
+                // Filtrar registros conforme o usuário digita no campo de filtro
+                filtroInput.addEventListener('input', () => {
+                    const filtro = filtroInput.value.toLowerCase();
+                    const mes = mesSelect.value;
+                    const dadosFiltrados = registros.filter(registro => {
+                        const mesRegistro = new Date(registro.data_hora).getMonth();
+                        return (registro.nome.toLowerCase().includes(filtro) || 
+                                registro.funcionario_id.toString().includes(filtro)) &&
+                               (mes === "" || mesRegistro === parseInt(mes));
+                    });
+                    renderTabela(dadosFiltrados);
+                });
+
+                // Filtrar por mês
+                mesSelect.addEventListener('change', () => {
+                    const filtro = filtroInput.value.toLowerCase();
+                    const mes = mesSelect.value;
+                    const dadosFiltrados = registros.filter(registro => {
+                        const mesRegistro = new Date(registro.data_hora).getMonth();
+                        return (registro.nome.toLowerCase().includes(filtro) || 
+                                registro.funcionario_id.toString().includes(filtro)) &&
+                               (mes === "" || mesRegistro === parseInt(mes));
+                    });
+                    renderTabela(dadosFiltrados);
+                });
+
             } catch (error) {
-                console.error('Erro ao gerar relatório:', error);
-                alert('Erro ao gerar relatório. Tente novamente.');
+                console.error('Erro ao carregar relatório:', error);
+                tabelaRelatorio.innerHTML = `<tr><td colspan="5" class="text-center text-danger">Erro ao carregar os dados</td></tr>`;
             }
         });
     </script>
 </body>
 </html>
+
+
+
