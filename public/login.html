@@ -4,36 +4,48 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Login</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    <script src="https://unpkg.com/heroicons@1.0.6/outline.js"></script>
     <style>
         body {
             background-color: #f8f9fa;
         }
-        .container {
-            margin-top: 30px;
-        }
     </style>
 </head>
-<body>
+<body class="bg-gray-100 flex items-center justify-center min-h-screen">
 
-    <div class="container">
-        <h1 class="text-center">Login</h1>
+    <div class="bg-white p-8 rounded-lg shadow-md w-full max-w-sm">
+        <h1 class="text-center text-2xl font-semibold mb-6">Login</h1>
         <form id="form-login">
-            <div class="form-group">
-                <label for="cpf">CPF</label>
-                <input type="text" id="cpf" class="form-control" required>
+            <div class="mb-4">
+                <label for="cpf" class="block text-sm font-medium text-gray-700">CPF</label>
+                <div class="flex items-center border border-gray-300 rounded-md">
+                    <span class="p-2 text-gray-500">
+                        <!-- Ícone de usuário -->
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 12c2.209 0 4-1.791 4-4s-1.791-4-4-4-4 1.791-4 4 1.791 4 4 4zm0 2c-3.313 0-10 1.672-10 5v1h20v-1c0-3.328-6.687-5-10-5z"/>
+                        </svg>
+                    </span>
+                    <input type="text" id="cpf" class="mt-1 block w-full p-2 border-0 focus:ring focus:ring-blue-300" required>
+                </div>
             </div>
-            <div class="form-group">
-                <label for="senha">Senha</label>
-                <input type="password" id="senha" class="form-control" required>
+            <div class="mb-6">
+                <label for="senha" class="block text-sm font-medium text-gray-700">Senha</label>
+                <div class="flex items-center border border-gray-300 rounded-md">
+                    <span class="p-2 text-gray-500">
+                        <!-- Ícone de cadeado -->
+                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path d="M12 2c-2.209 0-4 1.791-4 4v2h-2c-1.104 0-2 .896-2 2v10c0 1.104.896 2 2 2h16c1.104 0 2-.896 2-2V10c0-1.104-.896-2-2-2h-2V6c0-2.209-1.791-4-4-4h-4zm0 2h4c1.104 0 2 .896 2 2v2h-10V6c0-1.104.896-2 2-2zm-8 8h16v10H4V12z"/>
+                        </svg>
+                    </span>
+                    <input type="password" id="senha" class="mt-1 block w-full p-2 border-0 focus:ring focus:ring-blue-300" required>
+                </div>
             </div>
-            <button type="submit" class="btn btn-primary btn-block">Fazer Login</button>
+            <button type="submit" class="w-full bg-blue-500 text-white p-2 rounded-md hover:bg-blue-600 transition duration-200">Fazer Login</button>
         </form>
-        <p class="text-center mt-3">Não tem uma conta? <a href="cadastro.html">Cadastre-se</a></p>
+        <p class="text-center mt-4 text-sm">Não tem uma conta? <a href="cadastro.html" class="text-blue-500 hover:underline">Cadastre-se</a></p>
     </div>
 
-    <script src="https://code.jquery.com/jquery-3.3.1.slim.min.js"></script>
-    <script src="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/js/bootstrap.min.js"></script>
     <script>
         document.getElementById('form-login').addEventListener('submit', async function(event) {
             event.preventDefault();
