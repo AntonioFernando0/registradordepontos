@@ -57,6 +57,40 @@ app.get('/funcionarios', async (req, res) => {
         res.status(500).json({ error: 'Erro ao listar funcionários.' });
     }
 });
+app.post('/login', async (req, res) => {
+    const { cpf, senha } = req.body;
+
+    if (!cpf || !senha) {
+        return res.status(400).json({ error: 'CPF e senha são obrigatórios.' });
+    }
+
+    try {
+        // Verifique se o CPF existe no banco de dados
+        const [rows] = await db.query('SELECT id, nome, senha FROM funcionarios WHERE cpf = ?', [cpf]);
+
+        if (rows.length === 0) {
+            return res.status(400).json({ error: 'Credenciais inválidas.' });
+        }
+
+        const usuario = rows[0];
+        
+        // Verifique se a senha fornecida corresponde à senha no banco de dados
+        const senhaValida = await bcrypt.compare(senha, usuario.senha);
+        if (!senhaValida) {
+            return res.status(400).json({ error: 'Credenciais inválidas.' });
+        }
+
+        // Gere o token JWT
+        const token = jwt.sign({ id: usuario.id }, 'segredo', { expiresIn: '1h' });
+
+        // Retorne o token para o frontend
+        res.json({ token });
+    } catch (err) {
+        console.error('Erro ao autenticar usuário:', err);
+        res.status(500).json({ error: 'Erro ao autenticar usuário.' });
+    }
+});
+
 
 // Rota para cadastrar funcionários
 app.post('/funcionarios', async (req, res) => {
